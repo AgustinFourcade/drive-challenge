@@ -12,12 +12,12 @@ from email.mime.base import MIMEBase
 from email.encoders import encode_base64
 import mysql.connector
 
-
 # Creamos la conexion con la base de datos
 conexionDB = mysql.connector.connect(
     host = "127.0.0.1",
     user = "root",
     password = "123123",
+    
 )
 
 try:
@@ -114,16 +114,6 @@ def main():
         print('No files found.') # Si nuestro Drive esta vacio, mostramos un mensaje
 
     else:
-        # Limpiamos la base de datos
-        sql = "DELETE From usuarios where idusuarios > 0;"
-        sql2 = "ALTER TABLE usuarios AUTO_INCREMENT = 1;"
-        cursor.execute(sql)
-        cursor.execute(sql2)
-        sql3 = "DELETE From historial_publicos where idhistorial_publicos > 0;"
-        sql4 = "ALTER TABLE historial_publicos AUTO_INCREMENT = 1;"
-        cursor.execute(sql3)
-        cursor.execute(sql4)
-        conexionDB.commit()
 
         # Almacenamos todos los archivos que se encuentren con su metadata
         for item in items:
@@ -141,42 +131,54 @@ def main():
                 myFormat = "%Y-%m-%d"
                 nFecha_Modificacion = (myTime.strftime(myFormat))
 
-                # Si el archivo es privado, lo guardamos como tal
-                if visibilidad < 2:
-                    sqlUsuarios = "INSERT INTO usuarios (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
+                sqlComp = "SELECT nombre_archivo FROM usuarios WHERE nombre_archivo = '%s'" % (nombre)
+                cursor.execute(sqlComp)
+                nombreBdd = cursor.fetchone()
 
-                    valores = (owner, nombre, extension, "Privado", nFecha_Modificacion)
+                nombreBddComp = str(nombreBdd)
+                nombreCmp = ("('" + nombre + "',)")
 
-                    cursor.execute(sqlUsuarios, valores)
+                #Si el archivo no existe, lo guardamos
+                if nombreBddComp != nombreCmp: 
+                    # Si el archivo es privado, lo guardamos como tal
+                    if visibilidad < 2:
+                        sqlUsuarios = "INSERT INTO usuarios (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
 
-                    conexionDB.commit()
+                        valores = (owner, nombre, extension, "Privado", nFecha_Modificacion)
+
+                        cursor.execute(sqlUsuarios, valores)
+
+                        conexionDB.commit()
+
+                    else:
+                        valoresPublico = (owner, nombre, extension, "Publico", nFecha_Modificacion)
+                        valoresPriv = (owner, nombre, extension, "Privado", nFecha_Modificacion)
+
+                        sqlUsuarios = "INSERT INTO usuarios (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
+                        cursor.execute(sqlUsuarios, valoresPriv)
+
+                        # Guardamos el historial historico de los archivos que fueron publicos
+                        sqlHistorial = "INSERT INTO historial_publicos (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
+                        cursor.execute(sqlHistorial, valoresPublico)
+
+                        conexionDB.commit()
+
+                        # Enviamos correo al owner del archivo que cambiamos de publico a privado.
+                        mensaje = 'Se notifica de la actualizacion de un archivo de su Google Drive. Este mensaje se envia desde el challenge Gmail desarrollado en Python, es meramente de prueba. Agustin Fourcade - 2020'
+                   
+                        server = smtplib.SMTP('smtp.gmail.com', 587)
+                        server.starttls()
+                        server.login('drivechallengemeli@gmail.com', 'drivechallenge') 
+
+                        server.sendmail('drivechallengemeli@gmail.com', owner, mensaje)
+
+                        server.quit()
+
+                        print (f"Se envio el correo electronico a: {owner}")
+                        print (" ")
 
                 else:
-                    valoresPublico = (owner, nombre, extension, "Publico", nFecha_Modificacion)
-                    valoresPriv = (owner, nombre, extension, "Privado", nFecha_Modificacion)
-
-                    sqlUsuarios = "INSERT INTO usuarios (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
-                    cursor.execute(sqlUsuarios, valoresPriv)
-
-                    # Guardamos el historial historico de los archivos que fueron publicos
-                    sqlHistorial = "INSERT INTO historial_publicos (owner, nombre_archivo, extension, visibilidad, fecha_modificacion) VALUES (%s, %s, %s, %s, %s)"
-                    cursor.execute(sqlHistorial, valoresPublico)
-
-                    conexionDB.commit()
-
-                    # Enviamos correo al owner del archivo que cambiamos de publico a privado.
-                    mensaje = 'Se notifica de la actualizacion de un archivo de su Google Drive. Este mensaje se envia desde el challenge Gmail desarrollado en Python, es meramente de prueba. Agustin Fourcade - 2020'
-                   
-                    server = smtplib.SMTP('smtp.gmail.com', 587)
-                    server.starttls()
-                    server.login('drivechallengemeli@gmail.com', 'drivechallenge') 
-
-                    server.sendmail('shockh13@gmail.com', owner, mensaje)
-
-                    server.quit()
-
-                    print (f"Se envio el correo electronico a: {owner}")
-                    print (" ")
+                    print ("El archivo: " + nombre + " Ya esta en la base de datos")
 
             except:
                 msjError = ("Hay Error") # Si se encuentra un error con los archivos o sus metadatos obtenemos un error

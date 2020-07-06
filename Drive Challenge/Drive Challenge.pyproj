@@ -27,6 +27,9 @@
     <Compile Include="Drive_Challenge.py" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".env">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="password.env">
       <SubType>Code</SubType>
     </Content>
