@@ -1,4 +1,5 @@
 from __future__ import print_function
+import msvcrt
 import pickle
 import os.path
 from googleapiclient.discovery import build
@@ -184,9 +185,11 @@ def main():
                 msjError = ("Hay Error") # Si se encuentra un error con los archivos o sus metadatos obtenemos un error
 
         else:
-            print ("Se cargaron los prouctos a la base de datos correctamente!") # Si todo sale bien, mostramos un mensaje
+            print ("Se cargaron los productos a la base de datos correctamente!") # Si todo sale bien, mostramos un mensaje
             print (" ")
 
 
 if __name__ == '__main__':
     main()
+    print ("Pulse una tecla para continuar...")
+    msvcrt.getch()
